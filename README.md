@@ -51,6 +51,8 @@ A live instance is running at [oxi-demo.evtlab.pl](https://oxi-demo.evtlab.pl).
 - Example share: <https://oxi-demo.evtlab.pl/share/dcdb1d4f-074d-48a2-953f-04cc8d9b6f18>
 - Password: `demo123`
 
+> **Note:** The running demo has full functionality because it is running on an instance that has patches deployed.
+
 ## Features
 
 - File shares, with or without a password
