@@ -1,0 +1,877 @@
+<%
+  function formatSize(bytes) {
+    if (bytes == null || isNaN(bytes)) return '';
+    if (bytes < 1024) return bytes + ' B';
+    const units = ['KB', 'MB', 'GB', 'TB'];
+    let value = bytes / 1024;
+    let i = 0;
+    while (value >= 1024 && i < units.length - 1) { value /= 1024; i++; }
+    return (value < 10 ? value.toFixed(1) : Math.round(value)) + ' ' + units[i];
+  }
+  function fileIcon(mime, name) {
+    const m = (mime || '').toLowerCase();
+    const match = (name || '').toLowerCase().match(/\.([a-z0-9]+)$/);
+    const ext = match ? match[1] : '';
+
+    switch (ext) {
+      case 'pdf': return 'pdf.png';
+      case 'doc': case 'docx': case 'odt': case 'rtf': case 'pages':
+        return 'word.png';
+      case 'xls': case 'xlsx': case 'ods': case 'csv': case 'numbers':
+        return 'excel.png';
+      case 'ppt': case 'pptx': case 'odp': case 'key':
+        return 'powerpoint.png';
+      case 'txt': case 'md': case 'markdown': case 'log': case 'readme':
+        return 'txt.png';
+      case 'epub': case 'mobi': case 'azw': case 'azw3':
+        return 'ebook.png';
+      case 'zip': case 'tar': case 'gz': case 'tgz': case '7z': case 'rar':
+      case 'bz2': case 'xz': case 'zst': case 'lz4':
+        return 'archive.png';
+      case 'iso': case 'img': case 'dmg': case 'vhd': case 'vmdk':
+        return 'diskimage.png';
+      case 'exe': case 'msi': case 'app': case 'deb': case 'rpm': case 'apk':
+      case 'appimage': case 'flatpak': case 'snap':
+        return 'exe.png';
+      case 'js': case 'mjs': case 'cjs': case 'ts': case 'jsx': case 'tsx':
+        return 'javascript.png';
+      case 'py': case 'pyi': case 'pyw':
+        return 'python.png';
+      case 'c': case 'cpp': case 'cc': case 'cxx': case 'h': case 'hpp':
+      case 'hxx':
+        return 'cpp.png';
+      case 'html': case 'htm': case 'xhtml':
+        return 'html-file.png';
+      case 'ino': case 'pde':
+        return 'ino.png';
+    }
+
+    if (m === 'application/pdf') return 'pdf.png';
+    if (m === 'application/zip' || m.includes('compressed') || m.includes('archive'))
+      return 'archive.png';
+    if (m.includes('msdownload') || m.includes('executable') || m.includes('installer'))
+      return 'exe.png';
+    if (m.includes('opendocument.text') || m.includes('msword') || m.includes('wordprocessing'))
+      return 'word.png';
+    if (m.includes('spreadsheet') || m.includes('excel'))
+      return 'excel.png';
+    if (m.includes('presentation') || m.includes('powerpoint'))
+      return 'powerpoint.png';
+    if (m === 'text/html') return 'html-file.png';
+    if (m.startsWith('text/')) return 'txt.png';
+
+    return 'placeholder.png';
+  }
+  function mediaKind(mime) {
+    const m = (mime || '').toLowerCase();
+    if (m.startsWith('image/')) return 'image';
+    if (m.startsWith('video/')) return 'video';
+    return null;
+  }
+  const isSubfolder = folderId != null;
+  const empty = folders.length === 0 && files.length === 0;
+  const tokenEnc = encodeURIComponent(token);
+  const fileUrl = function(id) {
+    return '/share/' + tokenEnc + '/file/' + encodeURIComponent(id);
+  };
+%>
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      color-scheme: light dark;
+      --fg: #1a1a1a;
+      --fg-muted: #6b7280;
+      --bg-grad-start: #ffe4d4;
+      --bg-grad-end: #fef5f0;
+      --card-bg: rgba(255, 255, 255, 0.72);
+      --card-bg-hover: rgba(255, 255, 255, 0.92);
+      --card-border: rgba(0, 0, 0, 0.06);
+      --card-shadow: rgba(15, 23, 42, 0.08);
+      --card-shadow-hover: rgba(15, 23, 42, 0.14);
+      --thumb-bg: rgba(255, 255, 255, 0.55);
+      --pill-bg: rgba(255, 255, 255, 0.6);
+      --pill-border: rgba(0, 0, 0, 0.06);
+      --pill-bg-hover: rgba(255, 255, 255, 0.85);
+      --accent: #f0664a;
+      --accent-strong: #ff684b;
+      --accent-fg: #ffffff;
+      --accent-soft: rgba(240, 102, 74, 0.12);
+      --accent-glow: rgba(240, 102, 74, 0.30);
+      --hover-tint: rgba(0, 0, 0, 0.04);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --fg: #f3f4f6;
+        --fg-muted: #94a3b8;
+        --bg-grad-start: #1a1024;
+        --bg-grad-end: #0a0814;
+        --card-bg: rgba(30, 41, 59, 0.55);
+        --card-bg-hover: rgba(40, 52, 73, 0.75);
+        --card-border: rgba(255, 255, 255, 0.08);
+        --card-shadow: rgba(0, 0, 0, 0.40);
+        --card-shadow-hover: rgba(0, 0, 0, 0.55);
+        --thumb-bg: rgba(15, 23, 42, 0.55);
+        --pill-bg: rgba(30, 41, 59, 0.55);
+        --pill-border: rgba(255, 255, 255, 0.08);
+        --pill-bg-hover: rgba(40, 52, 73, 0.75);
+        --accent-soft: rgba(240, 102, 74, 0.18);
+        --hover-tint: rgba(255, 255, 255, 0.06);
+      }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { min-height: 100%; }
+    body {
+      font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(
+        ellipse at top,
+        var(--bg-grad-start) 0%,
+        var(--bg-grad-end) 70%
+      ) fixed;
+      color: var(--fg);
+      padding: 28px 20px 64px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* topbar and actions */
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .topbar h1 {
+      flex: 1 1 200px;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      word-break: break-word;
+    }
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 16px;
+      border-radius: 999px;
+      background: var(--pill-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--pill-border);
+      color: var(--fg);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 140ms ease, transform 140ms ease, color 140ms ease;
+    }
+    .pill:hover {
+      background: var(--pill-bg-hover);
+      transform: translateY(-1px);
+    }
+    .pill svg { width: 16px; height: 16px; flex: none; }
+
+    .view-toggle {
+      display: inline-flex;
+      background: var(--pill-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--pill-border);
+      border-radius: 999px;
+      padding: 3px;
+    }
+    .view-toggle button {
+      background: transparent;
+      border: none;
+      color: var(--fg-muted);
+      padding: 7px 11px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 140ms ease, color 140ms ease;
+    }
+    .view-toggle button:hover { color: var(--fg); }
+    .view-toggle button[aria-pressed="true"] {
+      background: var(--accent);
+      color: var(--accent-fg);
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+    .view-toggle button svg { width: 16px; height: 16px; }
+
+    .zip-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent);
+      color: var(--accent-fg);
+      padding: 10px 18px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      font-family: inherit;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 8px 22px var(--accent-glow);
+      transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+    }
+    .zip-btn:hover {
+      background: var(--accent-strong);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 26px var(--accent-glow);
+    }
+    .zip-btn:active { transform: translateY(0); }
+    .zip-btn svg { width: 16px; height: 16px; }
+
+    /* section titles */
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: var(--fg-muted);
+      margin: 28px 0 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title svg { width: 14px; height: 14px; opacity: 0.7; }
+
+    /* grid view - default */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 14px;
+    }
+    .card-link {
+      display: block;
+      background: var(--card-bg);
+      backdrop-filter: blur(14px) saturate(180%);
+      -webkit-backdrop-filter: blur(14px) saturate(180%);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      text-decoration: none;
+      color: var(--fg);
+      overflow: hidden;
+      box-shadow: 0 6px 18px var(--card-shadow);
+      transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+    }
+    .card-link:hover {
+      background: var(--card-bg-hover);
+      transform: translateY(-3px);
+      box-shadow: 0 14px 32px var(--card-shadow-hover);
+    }
+    .card-thumb {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      background: var(--thumb-bg);
+      position: relative;
+      overflow: hidden;
+    }
+    .card-thumb img,
+    .card-thumb video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .card-thumb video {
+      pointer-events: none;
+      background: #000;
+    }
+    .card-thumb .icon {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: var(--fg-muted);
+    }
+    .card-thumb .icon svg { width: 44px; height: 44px; }
+    .card-thumb .icon-img {
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      width: 56px;
+      height: 56px;
+      object-fit: contain;
+      display: block;
+    }
+    body[data-view="list"] .card-thumb .icon-img {
+      width: 28px;
+      height: 28px;
+    }
+    .card-thumb .video-marker {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+    }
+    .card-thumb .video-marker::after {
+      content: "";
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'><polygon points='8,5 19,12 8,19'/></svg>");
+      background-repeat: no-repeat;
+      background-position: 56% 50%;
+      background-size: 22px 22px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    .card-body {
+      padding: 11px 13px 12px;
+      min-width: 0;
+    }
+    .card-name {
+      font-size: 14px;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .card-meta {
+      font-size: 12px;
+      color: var(--fg-muted);
+      margin-top: 2px;
+    }
+
+    /* folders grid */
+    .folders-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    .folder-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--card-bg);
+      backdrop-filter: blur(14px) saturate(180%);
+      -webkit-backdrop-filter: blur(14px) saturate(180%);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      text-decoration: none;
+      color: var(--fg);
+      box-shadow: 0 6px 18px var(--card-shadow);
+      transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+    }
+    .folder-card:hover {
+      background: var(--card-bg-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 26px var(--card-shadow-hover);
+    }
+    .folder-card .icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: grid;
+      place-items: center;
+      flex: none;
+    }
+    .folder-card .icon svg { width: 20px; height: 20px; }
+    .folder-card .card-body { padding: 0; flex: 1 1 auto; min-width: 0; }
+
+    /* list view */
+    body[data-view="list"] .grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    body[data-view="list"] .card-link {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 14px;
+      border-radius: 12px;
+    }
+    body[data-view="list"] .card-link:hover { transform: none; }
+    body[data-view="list"] .card-thumb {
+      width: 48px;
+      height: 48px;
+      aspect-ratio: 1 / 1;
+      flex: none;
+      border-radius: 10px;
+    }
+    body[data-view="list"] .card-thumb .icon svg { width: 24px; height: 24px; }
+    body[data-view="list"] .card-thumb .video-marker::after {
+      width: 26px;
+      height: 26px;
+      background-size: 12px 12px;
+    }
+    body[data-view="list"] .card-body {
+      padding: 0;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    /* empty state */
+    .empty {
+      text-align: center;
+      color: var(--fg-muted);
+      padding: 64px 16px;
+      background: var(--card-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px dashed var(--card-border);
+      border-radius: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .empty svg { width: 36px; height: 36px; opacity: 0.55; }
+
+    /* lightbox */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      display: none;
+      z-index: 1000;
+      flex-direction: column;
+      animation: lb-fade 180ms ease;
+    }
+    .lightbox.open { display: flex; }
+    @keyframes lb-fade {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .lb-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 18px;
+      color: rgba(255, 255, 255, 0.92);
+      font-family: "Outfit", sans-serif;
+    }
+    .lb-title {
+      flex: 1 1 auto;
+      font-size: 14px;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .lb-bar a, .lb-bar button {
+      background: rgba(255, 255, 255, 0.10);
+      color: rgba(255, 255, 255, 0.95);
+      border: none;
+      border-radius: 999px;
+      width: 38px;
+      height: 38px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background 140ms ease;
+      font-family: inherit;
+      text-decoration: none;
+    }
+    .lb-bar a:hover, .lb-bar button:hover {
+      background: rgba(255, 255, 255, 0.20);
+    }
+    .lb-bar svg { width: 18px; height: 18px; }
+    .lb-stage {
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 16px 24px;
+      position: relative;
+      min-height: 0;
+      min-width: 0;
+      overflow: hidden;
+    }
+    #lb-content {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      min-height: 0;
+    }
+    #lb-content img,
+    #lb-content video {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      background: #000;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      border-radius: 6px;
+    }
+    .lb-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.10);
+      color: rgba(255, 255, 255, 0.95);
+      border: none;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background 140ms ease, transform 140ms ease;
+    }
+    .lb-nav:hover { background: rgba(255, 255, 255, 0.20); transform: translateY(-50%) scale(1.05); }
+    .lb-nav:disabled { opacity: 0.3; cursor: default; transform: translateY(-50%); }
+    .lb-nav svg { width: 22px; height: 22px; }
+    .lb-prev { left: 16px; }
+    .lb-next { right: 16px; }
+
+    @media (max-width: 540px) {
+      .topbar h1 { font-size: 20px; }
+      .actions { width: 100%; justify-content: flex-start; }
+      .zip-btn { padding: 9px 14px; font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="topbar">
+      <h1><%= title %></h1>
+      <div class="actions">
+        <% if (isSubfolder) { %>
+          <a class="pill" href="/share/<%= tokenEnc %>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+            <span><%= t('folder.back_to_root') %></span>
+          </a>
+        <% } %>
+        <div class="view-toggle" role="group" aria-label="View">
+          <button type="button" data-view="grid" aria-pressed="true" aria-label="Grid">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+            </svg>
+          </button>
+          <button type="button" data-view="list" aria-pressed="false" aria-label="List">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6" />
+              <line x1="8" y1="12" x2="21" y2="12" />
+              <line x1="8" y1="18" x2="21" y2="18" />
+              <line x1="3" y1="6" x2="3.01" y2="6" />
+              <line x1="3" y1="12" x2="3.01" y2="12" />
+              <line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <a class="zip-btn"
+           href="/share/<%= tokenEnc %><%= isSubfolder ? '/zip/' + encodeURIComponent(folderId) : '/zip' %>"
+           download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          <span><%= t('folder.zip_button') %></span>
+        </a>
+      </div>
+    </div>
+
+    <% if (empty) { %>
+      <div class="empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+        </svg>
+        <span><%= t('folder.empty') %></span>
+      </div>
+    <% } %>
+
+    <% if (folders.length > 0) { %>
+      <h2 class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+        </svg>
+        <span><%= t('folder.section.folders') %></span>
+      </h2>
+      <div class="folders-grid">
+        <% folders.forEach(function(f) { %>
+          <a class="folder-card" href="/share/<%= tokenEnc %>/folder/<%= encodeURIComponent(f.id) %>">
+            <span class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+            </span>
+            <div class="card-body">
+              <div class="card-name"><%= f.name %></div>
+              <div class="card-meta"><%= t('folder.subfolder_label') %></div>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <% if (files.length > 0) { %>
+      <h2 class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+        <span><%= t('folder.section.files') %></span>
+      </h2>
+      <div class="grid" id="files-grid">
+        <% files.forEach(function(f) {
+             const kind = mediaKind(f.mime_type);
+             const url = fileUrl(f.id);
+        %>
+          <a class="card-link"
+             href="<%= url %>"
+             data-id="<%= f.id %>"
+             data-name="<%= f.name %>"
+             data-mime="<%= f.mime_type || '' %>"
+             <%- kind ? 'data-mediakind="' + kind + '" data-src="' + url + '"' : '' %>>
+            <div class="card-thumb">
+              <% if (kind === 'image') { %>
+                <img src="<%= url %>" alt="" decoding="async" />
+              <% } else if (kind === 'video') { %>
+                <video data-lazy-src="<%= url %>" preload="metadata" muted playsinline disablepictureinpicture></video>
+                <span class="video-marker" aria-hidden="true"></span>
+              <% } else { %>
+                <img class="icon-img" src="/public/icons/<%= fileIcon(f.mime_type, f.name) %>" alt="" />
+              <% } %>
+            </div>
+            <div class="card-body">
+              <div class="card-name"><%= f.name %></div>
+              <div class="card-meta"><%= formatSize(f.size) %></div>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+  </main>
+
+  <!-- lightbox -->
+  <div class="lightbox" id="lightbox" aria-hidden="true" role="dialog">
+    <div class="lb-bar">
+      <span class="lb-title" id="lb-title"></span>
+      <a id="lb-download" href="#" download title="Download" aria-label="Download">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+      </a>
+      <button type="button" id="lb-close" title="Close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+    <div class="lb-stage">
+      <button type="button" class="lb-nav lb-prev" id="lb-prev" aria-label="Previous">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      </button>
+      <div id="lb-content"></div>
+      <button type="button" class="lb-nav lb-next" id="lb-next" aria-label="Next">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      document.querySelectorAll('.card-thumb img').forEach(function (img) {
+        img.addEventListener('error', function () {
+          if (img.dataset.retried === '1') return;
+          img.dataset.retried = '1';
+          const original = img.src;
+          setTimeout(function () {
+            const sep = original.indexOf('?') === -1 ? '?' : '&';
+            img.src = original + sep + '_r=' + Date.now();
+          }, 250);
+        });
+      });
+
+      function startVideoPoster(v) {
+        v.addEventListener('loadedmetadata', function () {
+          const t = Math.min(0.1, (v.duration || 1) * 0.1);
+          try { v.currentTime = t; } catch (_) { /* unsupported */ }
+        }, { once: true });
+        v.addEventListener('error', function () {
+          if (v.dataset.retried === '1') return;
+          v.dataset.retried = '1';
+          const original = v.dataset.lazySrc;
+          setTimeout(function () {
+            const sep = original.indexOf('?') === -1 ? '?' : '&';
+            v.src = original + sep + '_r=' + Date.now();
+          }, 250);
+        }, { once: true });
+        v.src = v.dataset.lazySrc;
+      }
+
+      const lazyVideos = document.querySelectorAll('.card-thumb video[data-lazy-src]');
+      if ('IntersectionObserver' in window && lazyVideos.length > 0) {
+        const obs = new IntersectionObserver(function (entries) {
+          for (const e of entries) {
+            if (!e.isIntersecting) continue;
+            const v = e.target;
+            if (v.dataset.lazySrc && !v.src) startVideoPoster(v);
+            obs.unobserve(v);
+          }
+        }, { rootMargin: '300px' });
+        lazyVideos.forEach(function (v) { obs.observe(v); });
+      } else {
+        lazyVideos.forEach(startVideoPoster);
+      }
+
+      const VIEW_KEY = 'oxiproxy.view';
+      const body = document.body;
+      const buttons = document.querySelectorAll('.view-toggle button');
+
+      function setView(v) {
+        if (v !== 'grid' && v !== 'list') v = 'grid';
+        body.dataset.view = v;
+        buttons.forEach(function (b) {
+          b.setAttribute('aria-pressed', String(b.dataset.view === v));
+        });
+        try { localStorage.setItem(VIEW_KEY, v); } catch (e) { /* sandbox */ }
+      }
+
+      let initialView = 'grid';
+      try { initialView = localStorage.getItem(VIEW_KEY) || 'grid'; } catch (e) { /* sandbox */ }
+      setView(initialView);
+      buttons.forEach(function (b) {
+        b.addEventListener('click', function () { setView(b.dataset.view); });
+      });
+
+      const lightbox = document.getElementById('lightbox');
+      const lbContent = document.getElementById('lb-content');
+      const lbTitle = document.getElementById('lb-title');
+      const lbDownload = document.getElementById('lb-download');
+      const lbClose = document.getElementById('lb-close');
+      const lbPrev = document.getElementById('lb-prev');
+      const lbNext = document.getElementById('lb-next');
+
+      const mediaCards = Array.prototype.filter.call(
+        document.querySelectorAll('.card-link[data-mediakind]'),
+        function (el) { return el.dataset.mediakind === 'image' || el.dataset.mediakind === 'video'; }
+      );
+      const mediaItems = mediaCards.map(function (el) {
+        return {
+          kind: el.dataset.mediakind,
+          src: el.dataset.src,
+          name: el.dataset.name,
+          mime: el.dataset.mime,
+        };
+      });
+
+      let currentIndex = -1;
+
+      function openAt(i) {
+        if (i < 0 || i >= mediaItems.length) return;
+        currentIndex = i;
+        const item = mediaItems[i];
+        lbContent.innerHTML = '';
+        if (item.kind === 'image') {
+          const img = document.createElement('img');
+          img.src = item.src;
+          img.alt = item.name;
+          lbContent.appendChild(img);
+        } else {
+          const vid = document.createElement('video');
+          vid.src = item.src;
+          vid.controls = true;
+          vid.autoplay = true;
+          vid.preload = 'metadata';
+          lbContent.appendChild(vid);
+        }
+        lbTitle.textContent = item.name;
+        lbDownload.href = item.src;
+        lbDownload.setAttribute('download', item.name);
+        lbPrev.disabled = i === 0;
+        lbNext.disabled = i === mediaItems.length - 1;
+        lightbox.classList.add('open');
+        lightbox.setAttribute('aria-hidden', 'false');
+      }
+      function close() {
+        lightbox.classList.remove('open');
+        lightbox.setAttribute('aria-hidden', 'true');
+        lbContent.innerHTML = '';
+        currentIndex = -1;
+      }
+      function step(delta) {
+        const next = currentIndex + delta;
+        if (next >= 0 && next < mediaItems.length) openAt(next);
+      }
+
+      mediaCards.forEach(function (el, i) {
+        el.addEventListener('click', function (e) {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+          e.preventDefault();
+          openAt(i);
+        });
+      });
+
+      lbClose.addEventListener('click', close);
+      lbPrev.addEventListener('click', function () { step(-1); });
+      lbNext.addEventListener('click', function () { step(1); });
+      lightbox.addEventListener('click', function (e) {
+        if (e.target === lightbox) close();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (!lightbox.classList.contains('open')) return;
+        if (e.key === 'Escape') { e.preventDefault(); close(); }
+        else if (e.key === 'ArrowLeft')  { e.preventDefault(); step(-1); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+      });
+    })();
+  </script>
+</body>
+</html>
