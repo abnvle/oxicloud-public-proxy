@@ -17,7 +17,7 @@ This proxy depends on two patches to OxiCloud. Both have been submitted to the o
 | PR | Status | What it enables |
 |---|---|---|
 | [AtalayaLabs/OxiCloud#346](https://github.com/AtalayaLabs/OxiCloud/pull/346) | **Merged** | Share-password unlock-cookie - fixes the 401 returned by the Download button on password-protected file shares. |
-| [AtalayaLabs/OxiCloud#347](https://github.com/AtalayaLabs/OxiCloud/pull/347) | **Open** | Public folder-browsing endpoints (`/api/s/{token}/contents`, `/api/s/{token}/file/{id}`, `/api/s/{token}/zip`) - required for folder shares, in-folder streams, and ZIP downloads. |
+| [AtalayaLabs/OxiCloud#347](https://github.com/AtalayaLabs/OxiCloud/pull/347) | **Merged** | Public folder-browsing endpoints (`/api/s/{token}/contents`, `/api/s/{token}/file/{id}`, `/api/s/{token}/zip`) - required for folder shares, in-folder streams, and ZIP downloads. |
 
 Plain file shares without a password work on any OxiCloud build. Until PR #347 lands in a release, folder-related features fall back to an error page.
 
